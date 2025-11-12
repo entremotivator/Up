@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="Philly Me Up - Menu Manager",
     page_icon="🥙",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS
@@ -208,191 +208,160 @@ st.markdown('<div class="main-header">🥙 Philly Me Up - Menu Manager</div>', u
 if not st.session_state.initialized:
     initialize_menu_data()
 
-# Sidebar
-with st.sidebar:
-    st.header("Navigation")
-    page = st.radio("Select Page", ["Dashboard", "Menu Items", "Add New Item", "Export CSV"])
-    
-    st.markdown("---")
-    st.subheader("Quick Stats")
-    total_items = len(st.session_state.menu_items)
-    categories = len(set(item['category'] for item in st.session_state.menu_items))
-    avg_price = sum(item['price'] for item in st.session_state.menu_items) / total_items if total_items > 0 else 0
-    
-    st.metric("Total Items", total_items)
-    st.metric("Categories", categories)
-    st.metric("Avg Price", f"${avg_price:.2f}")
+st.markdown('<div class="section-header">Dashboard Overview</div>', unsafe_allow_html=True)
 
-# Dashboard Page
-if page == "Dashboard":
-    st.markdown('<div class="section-header">Dashboard Overview</div>', unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        starters = len([i for i in st.session_state.menu_items if i['category'] == 'Starters'])
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3>{starters}</h3>
-                <p>Starters</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        salads = len([i for i in st.session_state.menu_items if i['category'] == 'Salads'])
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3>{salads}</h3>
-                <p>Salads</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        cheesesteaks = len([i for i in st.session_state.menu_items if i['category'] == 'Cheesesteaks'])
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3>{cheesesteaks}</h3>
-                <p>Cheesesteaks</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        pasta = len([i for i in st.session_state.menu_items if i['category'] == 'Pasta'])
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3>{pasta}</h3>
-                <p>Pasta</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown('<div class="section-header">Price Distribution by Category</div>', unsafe_allow_html=True)
-    
-    # Create price chart
-    df = pd.DataFrame(st.session_state.menu_items)
-    chart_data = df.groupby('category')['price'].agg(['mean', 'min', 'max']).reset_index()
-    
-    st.bar_chart(chart_data.set_index('category')['mean'])
-    
-    st.markdown('<div class="section-header">Recent Menu Items</div>', unsafe_allow_html=True)
-    recent_items = st.session_state.menu_items[:5]
-    for item in recent_items:
-        with st.expander(f"{item['name']} - ${item['price']:.2f}"):
+total_items = len(st.session_state.menu_items)
+categories = len(set(item['category'] for item in st.session_state.menu_items))
+avg_price = sum(item['price'] for item in st.session_state.menu_items) / total_items if total_items > 0 else 0
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    starters = len([i for i in st.session_state.menu_items if i['category'] == 'Starters'])
+    st.markdown(f"""
+        <div class="metric-card">
+            <h3>{starters}</h3>
+            <p>Starters</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    salads = len([i for i in st.session_state.menu_items if i['category'] == 'Salads'])
+    st.markdown(f"""
+        <div class="metric-card">
+            <h3>{salads}</h3>
+            <p>Salads</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    cheesesteaks = len([i for i in st.session_state.menu_items if i['category'] == 'Cheesesteaks'])
+    st.markdown(f"""
+        <div class="metric-card">
+            <h3>{cheesesteaks}</h3>
+            <p>Cheesesteaks</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col4:
+    pasta = len([i for i in st.session_state.menu_items if i['category'] == 'Pasta'])
+    st.markdown(f"""
+        <div class="metric-card">
+            <h3>{pasta}</h3>
+            <p>Pasta</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown('<div class="section-header">Price Distribution by Category</div>', unsafe_allow_html=True)
+
+# Create price chart
+df = pd.DataFrame(st.session_state.menu_items)
+chart_data = df.groupby('category')['price'].agg(['mean', 'min', 'max']).reset_index()
+
+st.bar_chart(chart_data.set_index('category')['mean'])
+
+st.markdown('<div class="section-header">All Menu Items</div>', unsafe_allow_html=True)
+
+# Filter options
+col1, col2 = st.columns([3, 1])
+with col1:
+    search = st.text_input("Search items", placeholder="Search by name or SKU...")
+with col2:
+    category_filter = st.selectbox("Filter by Category", ["All"] + sorted(set(item['category'] for item in st.session_state.menu_items)))
+
+# Filter items
+filtered_items = st.session_state.menu_items
+if search:
+    filtered_items = [i for i in filtered_items if search.lower() in i['name'].lower() or search.lower() in i['sku'].lower()]
+if category_filter != "All":
+    filtered_items = [i for i in filtered_items if i['category'] == category_filter]
+
+# Display items
+for idx, item in enumerate(filtered_items):
+    with st.expander(f"{item['name']} - ${item['price']:.2f} ({item['category']})"):
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
             st.write(f"**Category:** {item['category']}")
             st.write(f"**SKU:** {item['sku']}")
             st.write(f"**Description:** {item['description']}")
             if item.get('addons'):
                 st.write(f"**Add-ons Available:** Yes ({item['addons']})")
-
-# Menu Items Page
-elif page == "Menu Items":
-    st.markdown('<div class="section-header">All Menu Items</div>', unsafe_allow_html=True)
-    
-    # Filter options
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        search = st.text_input("Search items", placeholder="Search by name or SKU...")
-    with col2:
-        category_filter = st.selectbox("Filter by Category", ["All"] + sorted(set(item['category'] for item in st.session_state.menu_items)))
-    
-    # Filter items
-    filtered_items = st.session_state.menu_items
-    if search:
-        filtered_items = [i for i in filtered_items if search.lower() in i['name'].lower() or search.lower() in i['sku'].lower()]
-    if category_filter != "All":
-        filtered_items = [i for i in filtered_items if i['category'] == category_filter]
-    
-    # Display items
-    for idx, item in enumerate(filtered_items):
-        col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
-        
-        with col1:
-            st.write(f"**{item['name']}**")
-            st.caption(item['description'][:80] + "...")
-        with col2:
-            st.write(f"${item['price']:.2f}")
-        with col3:
-            st.write(item['category'])
-        with col4:
-            if st.button("Edit", key=f"edit_{idx}"):
-                st.session_state.editing_item = idx
-                st.rerun()
-        
-        st.markdown("---")
-
-# Add New Item Page
-elif page == "Add New Item":
-    st.markdown('<div class="section-header">Add New Menu Item</div>', unsafe_allow_html=True)
-    
-    with st.form("add_item_form"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            name = st.text_input("Item Name*")
-            category = st.selectbox("Category*", ["Starters", "Salads", "Cheesesteaks", "Pasta", "Wings", "Dips", "Desserts", "Beverages"])
-            price = st.number_input("Price ($)*", min_value=0.0, step=0.50, format="%.2f")
         
         with col2:
-            sku = st.text_input("SKU*", placeholder="PHI-XXX-001")
-            stock = st.selectbox("Stock Status", ["instock", "outofstock", "onbackorder"])
-            addons = st.selectbox("Add-ons", ["none", "protein", "cheesesteak"])
-        
-        description = st.text_area("Description*", placeholder="Enter a detailed description of the menu item...")
-        
-        submitted = st.form_submit_button("Add Item")
-        
-        if submitted:
-            if name and category and price and sku and description:
-                new_item = {
-                    "name": name,
-                    "category": category,
-                    "price": price,
-                    "description": description,
-                    "sku": sku,
-                    "stock": stock,
-                }
-                if addons != "none":
-                    new_item["addons"] = addons
-                
-                st.session_state.menu_items.append(new_item)
-                st.success(f"Successfully added {name} to the menu!")
-                st.balloons()
-            else:
-                st.error("Please fill in all required fields marked with *")
+            st.write(f"**Stock:** {item['stock']}")
+            st.write(f"**Price:** ${item['price']:.2f}")
 
-# Export CSV Page
-elif page == "Export CSV":
-    st.markdown('<div class="section-header">Export Menu to CSV</div>', unsafe_allow_html=True)
-    
-    st.write("Generate a WooCommerce-compatible CSV file with WP Cafe features for your Philly Me Up menu.")
-    
+st.markdown('<div class="section-header">Add New Menu Item</div>', unsafe_allow_html=True)
+
+with st.form("add_item_form"):
     col1, col2 = st.columns(2)
+    
     with col1:
-        st.info(f"📊 Total items to export: **{len(st.session_state.menu_items)}**")
+        name = st.text_input("Item Name*")
+        category = st.selectbox("Category*", ["Starters", "Salads", "Cheesesteaks", "Pasta", "Wings", "Dips", "Desserts", "Beverages"])
+        price = st.number_input("Price ($)*", min_value=0.0, step=0.50, format="%.2f")
+    
     with col2:
-        st.info(f"📁 File format: **WooCommerce CSV**")
+        sku = st.text_input("SKU*", placeholder="PHI-XXX-001")
+        stock = st.selectbox("Stock Status", ["instock", "outofstock", "onbackorder"])
+        addons = st.selectbox("Add-ons", ["none", "protein", "cheesesteak"])
     
-    st.markdown("### Preview")
-    df_preview = pd.DataFrame(st.session_state.menu_items)
-    st.dataframe(df_preview, use_container_width=True)
+    description = st.text_area("Description*", placeholder="Enter a detailed description of the menu item...")
     
-    if st.button("Generate CSV", type="primary"):
-        with st.spinner("Generating CSV file..."):
-            csv_df = generate_woocommerce_csv()
+    submitted = st.form_submit_button("Add Item")
+    
+    if submitted:
+        if name and category and price and sku and description:
+            new_item = {
+                "name": name,
+                "category": category,
+                "price": price,
+                "description": description,
+                "sku": sku,
+                "stock": stock,
+            }
+            if addons != "none":
+                new_item["addons"] = addons
             
-            # Convert to CSV
-            csv_buffer = io.StringIO()
-            csv_df.to_csv(csv_buffer, index=False)
-            csv_string = csv_buffer.getvalue()
-            
-            st.success("CSV file generated successfully!")
-            
-            # Download button
-            st.download_button(
-                label="Download CSV",
-                data=csv_string,
-                file_name=f"philly-me-up-menu-{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-            )
-            
-            st.markdown("### CSV Preview")
-            st.dataframe(csv_df.head(10), use_container_width=True)
+            st.session_state.menu_items.append(new_item)
+            st.success(f"Successfully added {name} to the menu!")
+            st.rerun()
+        else:
+            st.error("Please fill in all required fields marked with *")
+
+st.markdown('<div class="section-header">Export Menu to CSV</div>', unsafe_allow_html=True)
+
+st.write("Generate a WooCommerce-compatible CSV file with WP Cafe features for your Philly Me Up menu.")
+
+col1, col2 = st.columns(2)
+with col1:
+    st.info(f"📊 Total items to export: **{len(st.session_state.menu_items)}**")
+with col2:
+    st.info(f"📁 File format: **WooCommerce CSV**")
+
+st.markdown("### Preview")
+df_preview = pd.DataFrame(st.session_state.menu_items)
+st.dataframe(df_preview, use_container_width=True)
+
+if st.button("Generate CSV", type="primary"):
+    with st.spinner("Generating CSV file..."):
+        csv_df = generate_woocommerce_csv()
+        
+        # Convert to CSV
+        csv_buffer = io.StringIO()
+        csv_df.to_csv(csv_buffer, index=False)
+        csv_string = csv_buffer.getvalue()
+        
+        st.success("CSV file generated successfully!")
+        
+        # Download button
+        st.download_button(
+            label="Download CSV",
+            data=csv_string,
+            file_name=f"philly-me-up-menu-{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+        )
+        
+        st.markdown("### CSV Preview")
+        st.dataframe(csv_df.head(10), use_container_width=True)
